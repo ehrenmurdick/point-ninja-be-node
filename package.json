@@ -1,0 +1,17 @@
+{
+  "name": "point-ninja-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "lodash": "^4.17.4",
+    "nodejs-websocket": "^1.7.1",
+    "redis": "^2.6.5",
+    "redux": "^3.6.0"
+  }
+}
