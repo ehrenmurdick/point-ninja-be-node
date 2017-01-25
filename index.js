@@ -4,21 +4,42 @@ const _ = require('lodash')
 
 let client = redis.createClient()
 
+let socketPool = []
+
+const joinAction = (conn) => {
+  socketPool = _.concat(socketPool, conn)
+  console.log('joined')
+  console.log(socketPool.length, ' active connections')
+}
+
+const readState = (callback) => {
+  client.get('votes', callback)
+}
+
 const mutateState = (reducer) => {
-  client.get('votes', (err, reply) => {
+  readState((err, reply) => {
     let newState = reducer(JSON.parse(reply))
     console.log(newState)
     client.set('votes', JSON.stringify(newState))
   })
 }
 
-const voteAction = () => {
+const voteAction = (action) => {
   mutateState((votes) => {
     let {uuid, userId, partyId, points} = action
-    return [
+    let newState = [
       ..._.filter(votes, (v) => !(v.userId == action.userId)),
       {uuid, userId, partyId, points}
     ]
+    updateClients(newState)
+    return newState
+  })
+}
+
+const updateClients = (state) => {
+  console.log(state)
+  _.each(socketPool, (conn) => {
+    conn.send(JSON.stringify(state))
   })
 }
 
@@ -27,9 +48,14 @@ let server = ws.createServer(function(conn) {
 
   conn.on('text', (str) => {
     let action = JSON.parse(str)
+    console.log('incoming action: '+ action.type)
     switch(action.type) {
       case "VOTE":
         voteAction(action)
+        break
+      case "CREATE_PARTY":
+        joinAction(conn)
+        break
     }
   })
 
