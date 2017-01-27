@@ -45,9 +45,15 @@ const leaveParty = (conn, action) => {
   socketPool[action.uuid] = _.filter(socketPool[action.uuid], (c) => c !== conn)
 }
 
+const SyncVote = (votes) => ({
+  type: 'SYNC_VOTE',
+  votes
+})
+
+
 const updateClients = (partyId, state) => {
   _.each(socketPool[partyId], (conn) => {
-    conn.send(JSON.stringify(state))
+    conn.send(JSON.stringify(SyncVote(state)))
   })
 }
 
