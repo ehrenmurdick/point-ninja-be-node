@@ -4,34 +4,37 @@ const _ = require('lodash')
 
 let client = redis.createClient()
 
-let socketPool = []
+let socketPool = {}
 
-const joinAction = (conn) => {
-  socketPool = _.concat(socketPool, conn)
-  console.log('joined')
+const joinAction = (conn, action) => {
+  if (_.isNil(socketPool[action.uuid])) {
+    socketPool[action.uuid] = []
+  }
+  socketPool[action.uuid] = _.concat(socketPool[action.uuid], conn)
+  console.log(conn.key+' joined '+action.uuid)
   console.log(socketPool.length+' active connections')
 }
 
-const readState = (callback) => {
-  client.get('votes', callback)
+const readState = (partyId, callback) => {
+  client.get(partyId, callback)
 }
 
-const mutateState = (reducer) => {
-  readState((err, reply) => {
+const mutateState = (partyId, reducer) => {
+  readState(partyId, (err, reply) => {
     let newState = reducer(JSON.parse(reply))
     console.log('state mutated')
-    client.set('votes', JSON.stringify(newState))
+    client.set(partyId, JSON.stringify(newState))
   })
 }
 
 const voteAction = (action) => {
-  mutateState((votes) => {
+  mutateState(action.partyId, (votes) => {
     let {uuid, userId, partyId, points} = action
     let newState = [
       ..._.filter(votes, (v) => !(v.userId == action.userId)),
       {uuid, userId, partyId, points}
     ]
-    updateClients(newState)
+    updateClients(partyId, newState)
     return newState
   })
 }
@@ -39,12 +42,11 @@ const voteAction = (action) => {
 const leaveParty = (conn, action) => {
   console.log('leaving party')
   console.log(conn.key)
-  socketPool = _.filter(socketPool, (c) => c !== conn)
+  socketPool[action.uuid] = _.filter(socketPool[action.uuid], (c) => c !== conn)
 }
 
-const updateClients = (state) => {
-  console.log('updating '+socketPool.length+' clients')
-  _.each(socketPool, (conn) => {
+const updateClients = (partyId, state) => {
+  _.each(socketPool[partyId], (conn) => {
     conn.send(JSON.stringify(state))
   })
 }
@@ -63,7 +65,7 @@ let server = ws.createServer(function(conn) {
         break
       case "JOIN_PARTY":
         console.log(action)
-        joinAction(conn)
+        joinAction(conn, action)
         break
       case 'LEAVE_PARTY':
         leaveParty(conn, action)
