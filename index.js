@@ -9,7 +9,7 @@ let socketPool = []
 const joinAction = (conn) => {
   socketPool = _.concat(socketPool, conn)
   console.log('joined')
-  console.log(socketPool.length, ' active connections')
+  console.log(socketPool.length+' active connections')
 }
 
 const readState = (callback) => {
@@ -19,7 +19,7 @@ const readState = (callback) => {
 const mutateState = (reducer) => {
   readState((err, reply) => {
     let newState = reducer(JSON.parse(reply))
-    console.log(newState)
+    console.log('state mutated')
     client.set('votes', JSON.stringify(newState))
   })
 }
@@ -36,8 +36,14 @@ const voteAction = (action) => {
   })
 }
 
+const leaveParty = (conn, action) => {
+  console.log('leaving party')
+  console.log(conn.key)
+  socketPool = _.filter(socketPool, (c) => c !== conn)
+}
+
 const updateClients = (state) => {
-  console.log(state)
+  console.log('updating '+socketPool.length+' clients')
   _.each(socketPool, (conn) => {
     conn.send(JSON.stringify(state))
   })
@@ -54,7 +60,13 @@ let server = ws.createServer(function(conn) {
         voteAction(action)
         break
       case "CREATE_PARTY":
+        break
+      case "JOIN_PARTY":
+        console.log(action)
         joinAction(conn)
+        break
+      case 'LEAVE_PARTY':
+        leaveParty(conn, action)
         break
     }
   })
