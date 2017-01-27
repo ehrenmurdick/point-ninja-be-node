@@ -29,10 +29,10 @@ const mutateState = (partyId, reducer) => {
 
 const voteAction = (action) => {
   mutateState(action.partyId, (votes) => {
-    let {uuid, userId, partyId, points} = action
+    let {uuid, userId, userName, partyId, points} = action
     let newState = [
       ..._.filter(votes, (v) => !(v.userId == action.userId)),
-      {uuid, userId, partyId, points}
+      {uuid, userName, userId, partyId, points}
     ]
     updateClients(partyId, newState)
     return newState
