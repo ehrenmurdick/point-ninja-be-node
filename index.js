@@ -31,7 +31,7 @@ const voteAction = (action) => {
   mutateState(action.partyId, (votes) => {
     let {uuid, userId, userName, partyId, points} = action
     let newState = [
-      ..._.filter(votes, (v) => !(v.userId == action.userId)),
+      ..._.reject(votes, (v) => v.userId == action.userId),
       {uuid, userName, userId, partyId, points}
     ]
     updateClients(partyId, newState)
@@ -40,9 +40,8 @@ const voteAction = (action) => {
 }
 
 const leaveParty = (conn, action) => {
-  console.log('leaving party')
-  console.log(conn.key)
-  socketPool[action.uuid] = _.filter(socketPool[action.uuid], (c) => c !== conn)
+  console.log('connection '+conn.key+' leaving party')
+  socketPool[action.uuid] = _.reject(socketPool[action.uuid], (c) => c === conn)
 }
 
 const SyncVote = (votes) => ({
@@ -50,9 +49,14 @@ const SyncVote = (votes) => ({
   votes
 })
 
+const cleanupDeadConnections = (partyId) => {
+  socketPool[partyId] = _.filter(socketPool[partyId], (c) => c.readyState === 1)
+}
 
 const updateClients = (partyId, state) => {
+  cleanupDeadConnections(partyId)
   _.each(socketPool[partyId], (conn) => {
+    console.log('updating conn '+conn.key+' for party '+partyId)
     conn.send(JSON.stringify(SyncVote(state)))
   })
 }
